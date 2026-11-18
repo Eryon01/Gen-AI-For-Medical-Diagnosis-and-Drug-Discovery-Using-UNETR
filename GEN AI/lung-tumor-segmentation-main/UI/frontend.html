@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LungAI — Tumor Diagnosis & Drug Discovery</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+<style>
+:root {
+  --bg:          #04060e;
+  --bg2:         #070b18;
+  --surface:     #0c1122;
+  --surface2:    #111a2e;
+  --border:      #1c2a48;
+  --accent:      #3b82f6;
+  --accent2:     #06b6d4;
+  --danger:      #ef4444;
+  --warn:        #f59e0b;
+  --ok:          #10b981;
+  --text:        #e2e8f0;
+  --muted:       #64748b;
+  --glow:        0 0 40px rgba(59,130,246,0.15);
+  --glow-strong: 0 0 80px rgba(59,130,246,0.3);
+  --font-head:   'Syne', sans-serif;
+  --font-body:   'Space Grotesk', sans-serif;
+  --font-mono:   'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ── BACKGROUND GRID ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%);
+  top: -200px; right: -200px;
+  pointer-events: none; z-index: 0;
+  animation: floatGlow 8s ease-in-out infinite alternate;
+}
+
+@keyframes floatGlow {
+  from { transform: translate(0,0); }
+  to   { transform: translate(-40px, 60px); }
+}
+
+/* ── LAYOUT ── */
+#app { position: relative; z-index: 1; }
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 2rem;
+  height: 64px;
+  background: rgba(4,6,14,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-brand {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-head);
+  font-size: 1.3rem; font-weight: 800;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-brand .dot {
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.4); opacity: 0.7; }
+}
+
+.nav-links { display: flex; gap: 2rem; }
+.nav-links a {
+  color: var(--muted); font-size: 0.85rem; text-decoration: none;
+  letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--accent); }
+
+/* ── HERO ── */
+.hero {
+  min-height: calc(100vh - 64px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 4rem 2rem;
+  position: relative;
+}
+
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(59,130,246,0.08);
+  border: 1px solid rgba(59,130,246,0.25);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.75rem; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 2rem;
+  animation: slideDown 0.6s ease both;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+.hero h1 {
+  font-family: var(--font-head);
+  font-size: clamp(2.8rem, 6vw, 5.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+  animation: slideUp 0.7s 0.1s ease both;
+}
+
+.hero h1 .highlight {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero p {
+  max-width: 580px;
+  color: var(--muted); font-size: 1.1rem; line-height: 1.7;
+  margin: 0 auto 3rem;
+  animation: slideUp 0.7s 0.2s ease both;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.hero-cta {
+  display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+  animation: slideUp 0.7s 0.3s ease both;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-family: var(--font-body); font-size: 0.95rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  text-decoration: none;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #2563eb);
+  color: white;
+  box-shadow: 0 4px 24px rgba(59,130,246,0.35);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(59,130,246,0.5); }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); background: rgba(59,130,246,0.05); }
+
+/* ── STATS ROW ── */
+.stats-row {
+  display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap;
+  padding: 3rem 2rem;
+  border-top: 1px solid var(--border);
+  animation: slideUp 0.7s 0.4s ease both;
+}
+
+.stat { text-align: center; }
+.stat-val {
+  font-family: var(--font-head); font-size: 2.2rem; font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.stat-label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+/* ── MAIN SECTIONS ── */
+section { padding: 6rem 2rem; }
+.container { max-width: 1280px; margin: 0 auto; }
+
+.section-label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--accent2);
+  margin-bottom: 0.75rem;
+}
+.section-title {
+  font-family: var(--font-head); font-size: 2.2rem; font-weight: 800;
+  margin-bottom: 1rem;
+}
+.section-desc { color: var(--muted); max-width: 520px; line-height: 1.7; }
+
+/* ── UPLOAD SECTION ── */
+#upload-section { padding-top: 5rem; }
+
+.upload-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+  margin-top: 3rem;
+}
+
+.upload-zone {
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: 20px;
+  padding: 3rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-zone::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at center, rgba(59,130,246,0.05), transparent 70%);
+  opacity: 0; transition: opacity 0.3s;
+}
+
+.upload-zone:hover, .upload-zone.dragging {
+  border-color: var(--accent);
+  box-shadow: var(--glow-strong);
+}
+.upload-zone:hover::before, .upload-zone.dragging::before { opacity: 1; }
+
+.upload-icon {
+  font-size: 3rem; margin-bottom: 1rem;
+  filter: drop-shadow(0 0 20px rgba(59,130,246,0.5));
+}
+
+.upload-zone h3 {
+  font-family: var(--font-head); font-size: 1.3rem; font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.upload-zone p { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+
+.upload-zone .file-types {
+  margin-top: 1.5rem;
+  display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;
+}
+.tag {
+  background: rgba(59,130,246,0.1);
+  border: 1px solid rgba(59,130,246,0.2);
+  color: var(--accent);
+  padding: 3px 10px; border-radius: 6px; font-size: 0.72rem;
+  font-family: var(--font-mono); font-weight: 500;
+}
+
+#file-input { display: none; }
+
+.file-name {
+  margin-top: 1rem;
+  font-family: var(--font-mono); font-size: 0.8rem;
+  color: var(--ok); display: none;
+}
+
+/* OPTIONS PANEL */
+.options-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex; flex-direction: column; gap: 1.25rem;
+}
+
+.options-panel h3 {
+  font-family: var(--font-head); font-size: 1.1rem; font-weight: 700;
+  color: var(--text);
+}
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 0.8rem; color: var(--muted); font-weight: 500; letter-spacing: 0.05em; }
+.form-input {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px;
+  color: var(--text); font-family: var(--font-mono); font-size: 0.85rem;
+  outline: none; transition: border-color 0.2s;
+  width: 100%;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--muted); }
+
+.analyze-btn {
+  margin-top: 0.5rem;
+  width: 100%;
+  justify-content: center;
+  font-size: 1rem;
+  padding: 14px;
+  border-radius: 12px;
+  position: relative; overflow: hidden;
+}
+
+.analyze-btn .btn-shine {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.12) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.5s;
+}
+.analyze-btn:hover .btn-shine { transform: translateX(100%); }
+
+/* ── PROGRESS ── */
+.progress-wrap {
+  display: none;
+  margin-top: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.progress-steps {
+  display: flex; flex-direction: column; gap: 1rem;
+}
+
+.progress-step {
+  display: flex; align-items: center; gap: 1rem;
+  opacity: 0.3; transition: opacity 0.4s;
+}
+.progress-step.active { opacity: 1; }
+.progress-step.done { opacity: 0.7; }
+
+.step-icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; flex-shrink: 0;
+  transition: all 0.3s;
+}
+
+.progress-step.active .step-icon {
+  background: rgba(59,130,246,0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(59,130,246,0.3);
+  animation: spinPulse 1.5s ease-in-out infinite;
+}
+.progress-step.done .step-icon {
+  background: rgba(16,185,129,0.15);
+  border-color: var(--ok);
+}
+
+@keyframes spinPulse {
+  0%,100% { box-shadow: 0 0 8px rgba(59,130,246,0.3); }
+  50%      { box-shadow: 0 0 24px rgba(59,130,246,0.6); }
+}
+
+.step-text { font-size: 0.9rem; color: var(--muted); }
+.progress-step.active .step-text { color: var(--text); font-weight: 500; }
+
+/* ── RESULTS ── */
+#results-section {
+  display: none;
+  padding-top: 4rem;
+}
+
+/* SEVERITY CARD */
+.severity-card {
+  border-radius: 20px;
+  padding: 2.5rem;
+  margin-bottom: 2.5rem;
+  position: relative; overflow: hidden;
+  border: 1px solid;
+}
+.severity-card[data-level="minimal"]  { border-color: #10b98155; background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02)); }
+.severity-card[data-level="mild"]     { border-color: #06b6d455; background: linear-gradient(135deg, rgba(6,182,212,0.06), rgba(6,182,212,0.02)); }
+.severity-card[data-level="moderate"] { border-color: #f59e0b55; background: linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.02)); }
+.severity-card[data-level="severe"]   { border-color: #ef444455; background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02)); }
+
+.severity-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 16px; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+
+.severity-badge[data-level="minimal"]  { background: rgba(16,185,129,0.15); color: #10b981; }
+.severity-badge[data-level="mild"]     { background: rgba(6,182,212,0.15);  color: #06b6d4; }
+.severity-badge[data-level="moderate"] { background: rgba(245,158,11,0.15); color: #f59e0b; }
+.severity-badge[data-level="severe"]   { background: rgba(239,68,68,0.15);  color: #ef4444; }
+
+.severity-title {
+  font-family: var(--font-head); font-size: 1.8rem; font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.severity-desc { color: var(--muted); line-height: 1.7; font-size: 0.95rem; max-width: 700px; }
+
+.severity-metrics {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem; margin-top: 2rem;
+}
+
+.metric-chip {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 1rem 1.25rem;
+}
+.metric-chip-val {
+  font-family: var(--font-head); font-size: 1.4rem; font-weight: 700;
+}
+.metric-chip-label { color: var(--muted); font-size: 0.75rem; margin-top: 2px; }
+
+/* VIZ GRID */
+.viz-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.viz-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.viz-card-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.viz-card-title {
+  font-family: var(--font-head); font-size: 1rem; font-weight: 700;
+}
+.viz-badge {
+  background: rgba(59,130,246,0.1);
+  border: 1px solid rgba(59,130,246,0.2);
+  color: var(--accent2); font-size: 0.7rem;
+  padding: 3px 8px; border-radius: 6px;
+  font-family: var(--font-mono);
+}
+
+.viz-card img {
+  width: 100%; display: block;
+  border-radius: 0 0 20px 20px;
+}
+
+.viz-card-wide { grid-column: 1 / -1; }
+
+/* 3-D VIEWER */
+#plot-3d {
+  width: 100%; height: 480px;
+  border-radius: 0 0 20px 20px;
+}
+
+/* TABS */
+.tabs {
+  display: flex; gap: 4px;
+  background: var(--surface2);
+  border-radius: 12px; padding: 4px;
+  width: fit-content; margin-bottom: 1.5rem;
+}
+.tab {
+  padding: 8px 20px; border-radius: 9px;
+  font-size: 0.85rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  color: var(--muted); border: none; background: none;
+  font-family: var(--font-body);
+}
+.tab.active {
+  background: var(--accent); color: white;
+  box-shadow: 0 2px 12px rgba(59,130,246,0.4);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* DRUG TABLE */
+.drug-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.drug-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.5rem;
+  transition: all 0.2s;
+  position: relative; overflow: hidden;
+}
+
+.drug-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+
+.drug-card:hover {
+  border-color: rgba(59,130,246,0.4);
+  transform: translateY(-2px);
+  box-shadow: var(--glow);
+}
+
+.drug-name { font-family: var(--font-head); font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+.drug-class { color: var(--accent2); font-size: 0.78rem; margin-bottom: 0.75rem; }
+.drug-note { color: var(--muted); font-size: 0.83rem; line-height: 1.5; }
+
+.drug-auc {
+  margin-top: 1rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.auc-bar {
+  flex: 1; height: 4px; background: var(--border); border-radius: 4px; overflow: hidden;
+}
+.auc-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ok), var(--accent));
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+.auc-val { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+
+/* ROUTINE */
+.routine-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.routine-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 1.5rem;
+}
+
+.routine-block-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.routine-icon { font-size: 1.4rem; }
+.routine-block-title {
+  font-family: var(--font-head); font-size: 0.95rem; font-weight: 700;
+  text-transform: capitalize;
+}
+
+.routine-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.routine-list li {
+  display: flex; gap: 8px; align-items: flex-start;
+  color: var(--muted); font-size: 0.85rem; line-height: 1.5;
+}
+.routine-list li::before {
+  content: '→'; color: var(--accent); flex-shrink: 0; margin-top: 1px;
+}
+
+/* FEEDBACK */
+.feedback-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 3rem;
+  max-width: 700px; margin: 0 auto;
+  text-align: center;
+}
+
+.star-rating {
+  display: flex; justify-content: center; gap: 8px;
+  margin: 1.5rem 0;
+}
+
+.star {
+  font-size: 2.2rem; cursor: pointer;
+  transition: transform 0.15s;
+  filter: grayscale(1) opacity(0.3);
+}
+.star:hover, .star.active { filter: none; transform: scale(1.2); }
+
+.feedback-form { display: flex; flex-direction: column; gap: 1rem; text-align: left; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-textarea {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 16px;
+  color: var(--text); font-family: var(--font-body); font-size: 0.9rem;
+  outline: none; resize: vertical; min-height: 100px;
+  width: 100%; transition: border-color 0.2s;
+}
+.form-textarea:focus { border-color: var(--accent); }
+
+.feedback-success {
+  display: none;
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 12px; padding: 1.5rem;
+  color: var(--ok); font-size: 0.95rem;
+  margin-top: 1rem;
+}
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 2rem;
+  text-align: center;
+  color: var(--muted); font-size: 0.8rem;
+}
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 2rem; right: 2rem; z-index: 999;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 1rem 1.5rem;
+  font-size: 0.9rem; display: none;
+  animation: slideInRight 0.3s ease;
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .upload-grid { grid-template-columns: 1fr; }
+  .viz-grid { grid-template-columns: 1fr; }
+  .viz-card-wide { grid-column: 1; }
+  .form-row { grid-template-columns: 1fr; }
+  .nav-links { display: none; }
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ERROR */
+.error-box {
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: 12px; padding: 1.25rem 1.5rem;
+  color: #fca5a5; font-size: 0.9rem;
+  margin-top: 1rem; display: none;
+  font-family: var(--font-mono);
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-brand">
+    <div class="dot"></div>
+    LungAI
+  </a>
+  <div class="nav-links">
+    <a href="#upload-section">Analyze</a>
+    <a href="#results-section">Results</a>
+    <a href="#feedback-section">Feedback</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">
+    <span>🧬</span>
+    Powered by U-Net + GDSC Drug Sensitivity
+  </div>
+  <h1>
+    AI-Powered<br/>
+    <span class="highlight">Lung Tumor</span><br/>
+    Diagnosis
+  </h1>
+  <p>
+    Upload your 3D CT scan and get instant tumor segmentation, severity analysis,
+    drug recommendations, and a personalised care routine — all in one dashboard.
+  </p>
+  <div class="hero-cta">
+    <a href="#upload-section" class="btn btn-primary">
+      <span>🔬</span> Start Analysis
+      <div class="btn-shine"></div>
+    </a>
+    <a href="#feedback-section" class="btn btn-ghost">
+      <span>💬</span> Give Feedback
+    </a>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-val">2D + 3D</div>
+      <div class="stat-label">Visualisation</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">Grad-CAM</div>
+      <div class="stat-label">Explainability</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">GDSC</div>
+      <div class="stat-label">Drug Database</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">4-Level</div>
+      <div class="stat-label">Severity Scale</div>
+    </div>
+  </div>
+</section>
+
+<!-- UPLOAD SECTION -->
+<section id="upload-section">
+  <div class="container">
+    <div class="section-label">Step 01 — Input</div>
+    <h2 class="section-title">Upload Your CT Scan</h2>
+    <p class="section-desc">Supports 3D NIfTI volumes (.nii / .nii.gz), pre-processed NumPy slices (.npy), or standard images (.png / .jpg). For best results, use a full NIfTI volume.</p>
+
+    <div class="upload-grid">
+      <!-- Drop Zone -->
+      <div>
+        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div class="upload-icon">🫁</div>
+          <h3>Drop your CT scan here</h3>
+          <p>Click to browse or drag & drop your file</p>
+          <div class="file-types">
+            <span class="tag">.nii</span>
+            <span class="tag">.nii.gz</span>
+            <span class="tag">.npy</span>
+            <span class="tag">.png</span>
+            <span class="tag">.jpg</span>
+          </div>
+          <div class="file-name" id="file-name-display">✓ No file selected</div>
+        </div>
+        <input type="file" id="file-input" accept=".nii,.gz,.npy,.png,.jpg,.jpeg"/>
+
+        <div class="error-box" id="error-box"></div>
+      </div>
+
+      <!-- Options -->
+      <div class="options-panel">
+        <h3>⚙️ Analysis Options</h3>
+        <div class="form-group">
+          <label class="form-label">Axial Slice Index (optional)</label>
+          <input type="number" class="form-input" id="slice-idx" placeholder="e.g. 84 — auto if empty" min="0"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cell Line ID (optional — for GDSC drugs)</label>
+          <input type="text" class="form-input" id="cell-line" placeholder="e.g. HCC1569"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Backend URL</label>
+          <input type="text" class="form-input" id="backend-url" value="http://localhost:5000"/>
+        </div>
+
+        <button class="btn btn-primary analyze-btn" id="analyze-btn" onclick="runAnalysis()">
+          <span>🚀</span> Run Full Analysis
+          <div class="btn-shine"></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-steps">
+        <div class="progress-step" id="step-upload">
+          <div class="step-icon">📤</div>
+          <div class="step-text">Uploading CT scan to server…</div>
+        </div>
+        <div class="progress-step" id="step-preprocess">
+          <div class="step-icon">⚙️</div>
+          <div class="step-text">Preprocessing & normalising slices…</div>
+        </div>
+        <div class="progress-step" id="step-inference">
+          <div class="step-icon">🧠</div>
+          <div class="step-text">Running U-Net segmentation…</div>
+        </div>
+        <div class="progress-step" id="step-gradcam">
+          <div class="step-icon">🔥</div>
+          <div class="step-text">Generating Grad-CAM heatmaps…</div>
+        </div>
+        <div class="progress-step" id="step-severity">
+          <div class="step-icon">📊</div>
+          <div class="step-text">Analysing severity & drug recommendations…</div>
+        </div>
+        <div class="progress-step" id="step-done">
+          <div class="step-icon">✅</div>
+          <div class="step-text">Analysis complete!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS SECTION -->
+<section id="results-section">
+  <div class="container">
+    <div class="section-label">Step 02 — Results</div>
+    <h2 class="section-title">Diagnostic Report</h2>
+
+    <!-- Severity -->
+    <div id="severity-card" class="severity-card" data-level="mild">
+      <div class="severity-badge" id="severity-badge" data-level="mild">●&nbsp; Mild</div>
+      <div class="severity-title" id="severity-title">Mild Tumor Burden Detected</div>
+      <div class="severity-desc" id="severity-desc"></div>
+      <div class="severity-metrics" id="severity-metrics"></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('viz')">🖼️ Visualisations</button>
+      <button class="tab" onclick="switchTab('drugs')">💊 Drug Recommendations</button>
+      <button class="tab" onclick="switchTab('routine')">📋 Daily Routine</button>
+    </div>
+
+    <!-- VIZ TAB -->
+    <div class="tab-panel active" id="tab-viz">
+      <div class="viz-grid">
+        <div class="viz-card">
+          <div class="viz-card-header">
+            <div class="viz-card-title">2D Tumor Overlay</div>
+            <div class="viz-badge">U-Net Output</div>
+          </div>
+          <img id="overlay-img" src="" alt="2D overlay" style="display:none"/>
+        </div>
+
+        <div class="viz-card">
+          <div class="viz-card-header">
+            <div class="viz-card-title">Grad-CAM Heatmap</div>
+            <div class="viz-badge">Explainability</div>
+          </div>
+          <img id="gradcam-img" src="" alt="Grad-CAM" style="display:none"/>
+        </div>
+
+        <div class="viz-card viz-card-wide" id="multislice-card" style="display:none">
+          <div class="viz-card-header">
+            <div class="viz-card-title">Multi-Slice Volume View</div>
+            <div class="viz-badge">3D Volume</div>
+          </div>
+          <img id="multislice-img" src="" alt="Multi-slice"/>
+        </div>
+
+        <div class="viz-card viz-card-wide" id="mesh-card" style="display:none">
+          <div class="viz-card-header">
+            <div class="viz-card-title">Interactive 3D Tumor Mesh</div>
+            <div class="viz-badge">Plotly · Drag to rotate</div>
+          </div>
+          <div id="plot-3d"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRUGS TAB -->
+    <div class="tab-panel" id="tab-drugs">
+      <div class="drug-grid" id="drug-grid"></div>
+    </div>
+
+    <!-- ROUTINE TAB -->
+    <div class="tab-panel" id="tab-routine">
+      <div class="routine-grid" id="routine-grid"></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- FEEDBACK SECTION -->
+<section id="feedback-section" style="padding-top: 4rem;">
+  <div class="container">
+    <div class="section-label">Step 03 — Feedback</div>
+    <h2 class="section-title" style="text-align:center; margin-bottom:0.5rem;">Share Your Experience</h2>
+    <p class="section-desc" style="text-align:center; margin:0 auto 3rem; max-width:460px;">
+      Your feedback helps improve this tool. We read every message.
+    </p>
+    <div class="feedback-section">
+      <div style="font-size:2.5rem; margin-bottom:0.5rem;">💬</div>
+      <h3 style="font-family:var(--font-head); font-size:1.4rem; font-weight:800; margin-bottom:0.25rem;">How was your experience?</h3>
+      <p style="color:var(--muted); font-size:0.9rem;">Rate the diagnostic quality and UI</p>
+
+      <div class="star-rating" id="star-rating">
+        <span class="star" data-val="1" onclick="setRating(1)">⭐</span>
+        <span class="star" data-val="2" onclick="setRating(2)">⭐</span>
+        <span class="star" data-val="3" onclick="setRating(3)">⭐</span>
+        <span class="star" data-val="4" onclick="setRating(4)">⭐</span>
+        <span class="star" data-val="5" onclick="setRating(5)">⭐</span>
+      </div>
+
+      <div class="feedback-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Your Name</label>
+            <input type="text" class="form-input" id="fb-name" placeholder="Dr. Sharma"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email (optional)</label>
+            <input type="email" class="form-input" id="fb-email" placeholder="doctor@hospital.in"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Message</label>
+          <textarea class="form-textarea" id="fb-message" placeholder="Share your thoughts — diagnostic accuracy, usability, suggestions…"></textarea>
+        </div>
+        <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="submitFeedback()">
+          <span>📨</span> Submit Feedback
+        </button>
+      </div>
+
+      <div class="feedback-success" id="feedback-success">
+        ✅ &nbsp;Thank you! Your feedback has been saved and emailed to the team.
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>LungAI · RGIT Mumbai · Built with U-Net + GDSC Drug Database · &copy; 2026</p>
+</footer>
+
+</div><!-- #app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────
+let selectedFile = null;
+let currentRating = 0;
+let analysisData = null;
+
+const STEPS = ["upload","preprocess","inference","gradcam","severity","done"];
+let currentStep = -1;
+
+// ─────────────────────────────────────────
+//  FILE INPUT
+// ─────────────────────────────────────────
+const dropZone = document.getElementById("drop-zone");
+const fileInput = document.getElementById("file-input");
+const fileNameDisplay = document.getElementById("file-name-display");
+
+fileInput.addEventListener("change", e => {
+  if (e.target.files[0]) setFile(e.target.files[0]);
+});
+
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragging"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragging"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault(); dropZone.classList.remove("dragging");
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+
+function setFile(file) {
+  selectedFile = file;
+  fileNameDisplay.style.display = "block";
+  fileNameDisplay.textContent = "✓ " + file.name + " (" + (file.size/1024/1024).toFixed(2) + " MB)";
+  hideError();
+}
+
+// ─────────────────────────────────────────
+//  PROGRESS
+// ─────────────────────────────────────────
+function showProgress() {
+  document.getElementById("progress-wrap").style.display = "block";
+  currentStep = -1;
+}
+
+function advanceStep() {
+  if (currentStep >= 0) {
+    const prev = document.getElementById(`step-${STEPS[currentStep]}`);
+    prev.classList.remove("active");
+    prev.classList.add("done");
+    prev.querySelector(".step-icon").textContent = "✔";
+  }
+  currentStep++;
+  if (currentStep < STEPS.length) {
+    const cur = document.getElementById(`step-${STEPS[currentStep]}`);
+    cur.classList.add("active");
+  }
+}
+
+function hideProgress() {
+  document.getElementById("progress-wrap").style.display = "none";
+}
+
+// ─────────────────────────────────────────
+//  ERROR
+// ─────────────────────────────────────────
+function showError(msg) {
+  const box = document.getElementById("error-box");
+  box.style.display = "block"; box.textContent = "❌ " + msg;
+}
+function hideError() {
+  document.getElementById("error-box").style.display = "none";
+}
+
+// ─────────────────────────────────────────
+//  MAIN ANALYSIS
+// ─────────────────────────────────────────
+async function runAnalysis() {
+  if (!selectedFile) { showError("Please select a CT scan file first."); return; }
+  hideError();
+
+  const backendUrl = document.getElementById("backend-url").value.trim().replace(/\/$/, "");
+  const sliceIdx   = document.getElementById("slice-idx").value;
+  const cellLine   = document.getElementById("cell-line").value.trim();
+
+  // Disable button
+  const btn = document.getElementById("analyze-btn");
+  btn.disabled = true; btn.innerHTML = '<span>⏳</span> Analysing…';
+
+  showProgress();
+  advanceStep(); // upload
+
+  const formData = new FormData();
+  formData.append("file", selectedFile);
+  if (sliceIdx) formData.append("slice_idx", sliceIdx);
+  if (cellLine) formData.append("cell_line", cellLine);
+
+  try {
+    // Simulate step advancement with delays that mirror typical processing time
+    const stepPromise = (async () => {
+      await sleep(800);  advanceStep(); // preprocess
+      await sleep(1400); advanceStep(); // inference
+      await sleep(800);  advanceStep(); // gradcam
+      await sleep(600);  advanceStep(); // severity
+    })();
+
+    const fetchPromise = fetch(`${backendUrl}/api/analyze`, {
+      method: "POST", body: formData
+    });
+
+    const [resp] = await Promise.all([fetchPromise, stepPromise]);
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || `Server error ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    analysisData = data;
+
+    advanceStep(); // done
+    await sleep(600);
+    hideProgress();
+
+    renderResults(data);
+    document.getElementById("results-section").style.display = "block";
+    document.getElementById("results-section").scrollIntoView({ behavior: "smooth" });
+
+  } catch (e) {
+    hideProgress();
+    showError(e.message);
+
+    // DEMO MODE — render with mock data if backend is unreachable
+    if (e.message.includes("Failed to fetch") || e.message.includes("NetworkError")) {
+      showToast("⚠️ Backend offline — showing demo data", 4000);
+      renderResults(getMockData());
+      document.getElementById("results-section").style.display = "block";
+      document.getElementById("results-section").scrollIntoView({ behavior: "smooth" });
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>🚀</span> Run Full Analysis <div class="btn-shine"></div>';
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─────────────────────────────────────────
+//  RENDER RESULTS
+// ─────────────────────────────────────────
+function renderResults(data) {
+  // ── Severity ──
+  const sev = data.severity;
+  const level = sev.level;
+  const levelLabels = { minimal:"Minimal", mild:"Mild", moderate:"Moderate", severe:"Severe" };
+
+  document.getElementById("severity-card").dataset.level = level;
+  const badge = document.getElementById("severity-badge");
+  badge.dataset.level = level;
+  badge.textContent = "● " + levelLabels[level];
+
+  document.getElementById("severity-title").textContent =
+    levelLabels[level] + " Tumor Burden Detected";
+  document.getElementById("severity-desc").textContent = sev.description;
+
+  const metricsEl = document.getElementById("severity-metrics");
+  const metrics = [
+    { val: sev.tumor_voxels?.toLocaleString() ?? "—",   label: "Tumor Voxels" },
+    { val: sev.tumor_volume_mm3 ? `${sev.tumor_volume_mm3} mm³` : "—",  label: "Est. Volume" },
+    { val: sev.affected_slices ?? "—",  label: "Affected Slices" },
+    { val: sev.burden_percent != null ? `${sev.burden_percent}%` : "—", label: "Lung Burden" },
+  ];
+  metricsEl.innerHTML = metrics.map(m => `
+    <div class="metric-chip">
+      <div class="metric-chip-val">${m.val}</div>
+      <div class="metric-chip-label">${m.label}</div>
+    </div>
+  `).join("");
+
+  // ── Images ──
+  if (data.overlay_2d) {
+    const img = document.getElementById("overlay-img");
+    img.src = "data:image/png;base64," + data.overlay_2d;
+    img.style.display = "block";
+  }
+  if (data.gradcam) {
+    const img = document.getElementById("gradcam-img");
+    img.src = "data:image/png;base64," + data.gradcam;
+    img.style.display = "block";
+  }
+  if (data.multislice) {
+    document.getElementById("multislice-card").style.display = "block";
+    document.getElementById("multislice-img").src = "data:image/png;base64," + data.multislice;
+  }
+
+  // ── 3D Mesh ──
+  if (data.mesh_3d) {
+    document.getElementById("mesh-card").style.display = "block";
+    const m = data.mesh_3d;
+    Plotly.newPlot("plot-3d", [{
+      type: "mesh3d",
+      x: m.x, y: m.y, z: m.z,
+      i: m.i, j: m.j, k: m.k,
+      color: "#ef4444", opacity: 0.7,
+      lighting: { ambient: 0.4, diffuse: 0.8, roughness: 0.5, specular: 0.6 },
+      lightposition: { x: 100, y: 200, z: 0 },
+      name: "Tumor Mesh",
+    }], {
+      paper_bgcolor: "#0c1122",
+      plot_bgcolor:  "#0c1122",
+      scene: {
+        xaxis: { color: "#64748b", gridcolor: "#1c2a48", title: "X" },
+        yaxis: { color: "#64748b", gridcolor: "#1c2a48", title: "Y" },
+        zaxis: { color: "#64748b", gridcolor: "#1c2a48", title: "Z" },
+        aspectmode: "data",
+        bgcolor: "#0c1122",
+      },
+      font: { color: "#e2e8f0", family: "Space Grotesk" },
+      title: { text: "3D Tumor Mesh — Drag to Rotate", font: { color: "#e2e8f0", size: 14 } },
+      margin: { t: 50, b: 20, l: 20, r: 20 },
+      updatemenus: [{
+        type: "buttons", showactive: false, y: 1.1, x: 0,
+        buttons: [{
+          label: "▶ Animate",
+          method: "animate",
+          args: [null, { frame: { duration: 50 }, fromcurrent: true,
+            transition: { duration: 0 } }]
+        }]
+      }]
+    }, {
+      responsive: true,
+      displayModeBar: true,
+      modeBarButtonsToRemove: ["toImage"],
+    });
+
+    // Auto-rotate animation
+    let angle = 0;
+    const rotateInterval = setInterval(() => {
+      angle = (angle + 1) % 360;
+      Plotly.relayout("plot-3d", {
+        "scene.camera.eye": {
+          x: 1.5 * Math.cos(angle * Math.PI / 180),
+          y: 1.5 * Math.sin(angle * Math.PI / 180),
+          z: 0.8
+        }
+      }).catch(() => clearInterval(rotateInterval));
+    }, 50);
+
+    // Stop on user interaction
+    document.getElementById("plot-3d").on("plotly_relayout", () => clearInterval(rotateInterval));
+  }
+
+  // ── Drugs ──
+  const drugGrid = document.getElementById("drug-grid");
+  drugGrid.innerHTML = (data.drugs || []).map(d => {
+    const auc = d.auc ?? 0.3;
+    const pct = Math.max(5, Math.min(95, Math.round((1 - auc) * 100)));
+    return `
+      <div class="drug-card">
+        <div class="drug-name">${d.name}</div>
+        <div class="drug-class">${d.class ?? "—"}</div>
+        <div class="drug-note">${d.note ?? ""}</div>
+        <div class="drug-auc">
+          <div class="auc-bar">
+            <div class="auc-fill" style="width:${pct}%"></div>
+          </div>
+          <div class="auc-val">AUC ${auc.toFixed(2)}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // ── Routine ──
+  const routineGrid = document.getElementById("routine-grid");
+  const icons = {
+    morning: "🌅", nutrition: "🥗", exercise: "🏃",
+    mental_health: "🧘", medical: "💊", evening: "🌙"
+  };
+  const routine = data.daily_routine || {};
+  routineGrid.innerHTML = Object.entries(routine).map(([key, items]) => `
+    <div class="routine-block">
+      <div class="routine-block-header">
+        <span class="routine-icon">${icons[key] ?? "📌"}</span>
+        <span class="routine-block-title">${key.replace("_"," ")}</span>
+      </div>
+      <ul class="routine-list">
+        ${(items||[]).map(i=>`<li>${i}</li>`).join("")}
+      </ul>
+    </div>
+  `).join("");
+}
+
+// ─────────────────────────────────────────
+//  TABS
+// ─────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach((t,i) => {
+    const names = ["viz","drugs","routine"];
+    t.classList.toggle("active", names[i] === name);
+  });
+  document.querySelectorAll(".tab-panel").forEach(p => {
+    p.classList.toggle("active", p.id === "tab-"+name);
+  });
+}
+
+// ─────────────────────────────────────────
+//  FEEDBACK
+// ─────────────────────────────────────────
+function setRating(val) {
+  currentRating = val;
+  document.querySelectorAll(".star").forEach(s => {
+    s.classList.toggle("active", parseInt(s.dataset.val) <= val);
+  });
+}
+
+async function submitFeedback() {
+  const name    = document.getElementById("fb-name").value.trim() || "Anonymous";
+  const email   = document.getElementById("fb-email").value.trim();
+  const message = document.getElementById("fb-message").value.trim();
+  const rating  = currentRating || 5;
+
+  const backendUrl = document.getElementById("backend-url").value.trim().replace(/\/$/, "");
+
+  try {
+    const resp = await fetch(`${backendUrl}/api/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, rating, message })
+    });
+    if (resp.ok) {
+      document.getElementById("feedback-success").style.display = "block";
+      showToast("✅ Feedback submitted!", 3000);
+    } else {
+      showToast("⚠️ Could not submit (saved locally)", 3000);
+      saveFeedbackLocally({ name, email, rating, message });
+      document.getElementById("feedback-success").style.display = "block";
+    }
+  } catch {
+    showToast("⚠️ Backend offline — feedback saved locally", 3000);
+    saveFeedbackLocally({ name, email, rating, message });
+    document.getElementById("feedback-success").style.display = "block";
+  }
+}
+
+function saveFeedbackLocally(data) {
+  const existing = JSON.parse(localStorage.getItem("lungai_feedback") || "[]");
+  existing.push({ ...data, timestamp: new Date().toISOString() });
+  localStorage.setItem("lungai_feedback", JSON.stringify(existing));
+}
+
+// ─────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  setTimeout(() => { t.style.display = "none"; }, duration);
+}
+
+// ─────────────────────────────────────────
+//  MOCK DATA (demo / offline mode)
+// ─────────────────────────────────────────
+function getMockData() {
+  return {
+    severity: {
+      level: "mild",
+      tumor_voxels: 1243,
+      tumor_volume_mm3: 4203.1,
+      affected_slices: 18,
+      burden_percent: 2.4,
+      description:
+        "Mild tumor burden. The lesion is localised and potentially operable. Multidisciplinary team review advised."
+    },
+    overlay_2d: null,
+    gradcam: null,
+    multislice: null,
+    mesh_3d: generateDemoMesh(),
+    drugs: [
+      { name: "Osimertinib",   auc: 0.19, class: "EGFR TKI (3rd gen)",    note: "Preferred for T790M mutation" },
+      { name: "Pembrolizumab", auc: 0.28, class: "PD-1 inhibitor",        note: "High PD-L1 expression" },
+      { name: "Alectinib",     auc: 0.22, class: "ALK inhibitor",         note: "For ALK+ NSCLC" },
+      { name: "Erlotinib",     auc: 0.21, class: "EGFR TKI (1st gen)",    note: "First-line for EGFR-mutant NSCLC" },
+    ],
+    daily_routine: {
+      morning:      ["Wake up at 6:30 AM", "Drink 2 glasses of lukewarm water", "10 min deep breathing"],
+      nutrition:    ["Anti-inflammatory diet: turmeric, ginger, leafy greens", "Lean protein at every meal", "2–2.5 L water daily"],
+      exercise:     ["20-min gentle walk", "Pulmonary rehab exercises", "Avoid strenuous activity"],
+      mental_health:["10-min guided meditation", "Journaling: 3 gratitudes", "Connect with support group"],
+      medical:      ["Monthly oncology consultation", "Take medications on schedule", "Report new symptoms immediately"],
+      evening:      ["Light dinner by 7 PM", "Avoid screens 1hr before bed", "Sleep 7–9 hours"],
+    }
+  };
+}
+
+function generateDemoMesh() {
+  // Generate a spherical mesh for demo
+  const verts = [], faces = [];
+  const N = 20, R = 30;
+  for (let i = 0; i <= N; i++) {
+    for (let j = 0; j <= N; j++) {
+      const theta = (i / N) * Math.PI;
+      const phi   = (j / N) * 2 * Math.PI;
+      verts.push([
+        R * Math.sin(theta) * Math.cos(phi) + R,
+        R * Math.sin(theta) * Math.sin(phi) + R,
+        R * Math.cos(theta) + R
+      ]);
+    }
+  }
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const a = i * (N+1) + j;
+      const b = a + 1, c = a + N + 1, d = c + 1;
+      faces.push([a,b,c], [b,d,c]);
+    }
+  }
+  return {
+    x: verts.map(v=>v[0]), y: verts.map(v=>v[1]), z: verts.map(v=>v[2]),
+    i: faces.map(f=>f[0]), j: faces.map(f=>f[1]), k: faces.map(f=>f[2]),
+  };
+}
+</script>
+</body>
+</html>

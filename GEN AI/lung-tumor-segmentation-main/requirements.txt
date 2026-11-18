@@ -1,0 +1,15 @@
+torch>=2.0.0
+torchvision
+numpy
+opencv-python
+matplotlib
+nibabel
+scipy
+scikit-learn
+pandas
+flask
+flask-cors
+scikit-image
+plotly
+tqdm
+Pillow
